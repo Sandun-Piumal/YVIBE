@@ -233,45 +233,6 @@ class MainActivity : AppCompatActivity() {
             ytm-feed-nudge-renderer { display: none !important; }
             ytm-home-logo { display: none !important; }
             body { padding-top: 0 !important; }
-
-            /* ---------- YVIBE light glass skin ---------- */
-            html, body, ytm-app {
-                background: linear-gradient(180deg, #EDEBFF 0%, #DCEBFF 50%, #FBE3F3 100%) fixed !important;
-            }
-            html {
-                --yt-spec-base-background: transparent !important;
-                --yt-spec-general-background-a: transparent !important;
-                --yt-spec-general-background-b: transparent !important;
-                --yt-spec-general-background-c: transparent !important;
-                --yt-spec-text-primary: #1B1A33 !important;
-                --yt-spec-text-secondary: #58567A !important;
-            }
-            ytm-browse, ytm-search, ytm-watch, ytm-feed-filter-chip-bar-renderer {
-                background: transparent !important;
-            }
-            ytm-media-item {
-                background: rgba(255,255,255,0.6) !important;
-                border: 1px solid rgba(255,255,255,0.9) !important;
-                border-radius: 22px !important;
-                margin: 10px 12px !important;
-                padding: 8px !important;
-                box-shadow: 0 10px 28px rgba(90,80,160,0.18) !important;
-                overflow: hidden !important;
-            }
-            .media-item-thumbnail-container, ytm-thumbnail-cover, .video-thumbnail-container-large {
-                border-radius: 18px !important;
-                overflow: hidden !important;
-            }
-            ytm-chip-cloud-chip-renderer .chip-container {
-                background: rgba(255,255,255,0.6) !important;
-                border: 1px solid rgba(255,255,255,0.9) !important;
-                border-radius: 20px !important;
-                color: #1B1A33 !important;
-            }
-            ytm-chip-cloud-chip-renderer[selected] .chip-container {
-                background: #1B1A33 !important;
-                color: #FFFFFF !important;
-            }
         """
 
         // PASTE YOUR EXISTING SCRIPT BETWEEN THE QUOTES BELOW
@@ -280,37 +241,58 @@ class MainActivity : AppCompatActivity() {
   if (window.__yvibeClean) return;
   window.__yvibeClean = true;
 
-  var st = document.createElement('style');
-  st.textContent =
-    'ytm-home-logo, ytm-searchbox, ytm-feed-nudge-renderer {display:none !important;}';
-  (document.head || document.documentElement).appendChild(st);
-
-  function hideUp(el, levels) {
-    var n = 0;
-    while (el.parentElement && n < levels && el.parentElement !== document.body) {
-      el = el.parentElement;
-      n++;
+  function findText(str) {
+    var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    var n;
+    while ((n = w.nextNode())) {
+      if (n.nodeValue && n.nodeValue.indexOf(str) > -1) return n.parentElement;
     }
+    return null;
+  }
+
+  function up(el, levels) {
+    var i = 0;
+    while (el.parentElement && i < levels && el.parentElement !== document.body) {
+      el = el.parentElement;
+      i++;
+    }
+    return el;
+  }
+
+  function hide(el) {
     el.style.display = 'none';
+    el.setAttribute('data-yv', '1');
   }
 
   function clean() {
     if (!document.body) return;
 
-    // "Try searching to get started" card
-    var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    var node;
-    while ((node = w.nextNode())) {
-      if (node.nodeValue && node.nodeValue.indexOf('Try searching to get started') > -1) {
-        hideUp(node.parentElement, 4);
-      }
+    // put back whatever we hid last time, then decide again
+    var prev = document.querySelectorAll('[data-yv]');
+    for (var i = 0; i < prev.length; i++) {
+      prev[i].style.display = '';
+      prev[i].removeAttribute('data-yv');
     }
 
-    // The site's own search row (compass + "Search YouTube" + mic)
-    var inputs = document.querySelectorAll('input[placeholder], input[type="search"]');
-    for (var i = 0; i < inputs.length; i++) {
-      var ph = (inputs[i].getAttribute('placeholder') || '').toLowerCase();
-      if (ph.indexOf('search') > -1) hideUp(inputs[i], 3);
+    // only the empty home page of a signed-out user
+    if (location.pathname !== '/') return;
+    var nudge = findText('Try searching to get started');
+    if (!nudge) return;
+
+    var nudgeBox = up(nudge, 4);
+
+    // the site's own search row (placeholder text or input)
+    var search = document.querySelector('input[placeholder*="Search"]') ||
+                 findText('Search YouTube');
+
+    if (search) {
+      // hide everything inside the block that holds both the search row and the card
+      var a = nudgeBox;
+      while (a.parentElement && !a.contains(search)) a = a.parentElement;
+      var kids = a.children;
+      for (var j = 0; j < kids.length; j++) hide(kids[j]);
+    } else {
+      hide(nudgeBox);
     }
   }
 
