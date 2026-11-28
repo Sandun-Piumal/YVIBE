@@ -337,7 +337,6 @@ class MainActivity : AppCompatActivity() {
             ytm-pivot-bar-renderer { display: none !important; }
             ytm-feed-nudge-renderer { display: none !important; }
             ytm-home-logo { display: none !important; }
-            body { padding-top: 0 !important; }
             ytm-promoted-sparkles-web-renderer, ytm-promoted-video-renderer,
             ytm-companion-ad-renderer, ytm-ad-slot-renderer,
             ytm-in-feed-ad-layout-renderer, ytm-display-ad-renderer,
@@ -412,24 +411,55 @@ class MainActivity : AppCompatActivity() {
   setInterval(clean, 400);
 })();
 
-// ---------- remove the empty space at the top ----------
+// ---------- remove the empty space at the top (not on video pages) ----------
 (function () {
+  var mods = [];
+
+  function remember(el) {
+    if (el.hasAttribute('data-yv-style')) return;
+    el.setAttribute('data-yv-style', el.getAttribute('style') || '');
+    mods.push(el);
+  }
+
+  function restoreAll() {
+    for (var i = 0; i < mods.length; i++) {
+      var el = mods[i];
+      if (el.hasAttribute('data-yv-style')) {
+        var s = el.getAttribute('data-yv-style');
+        if (s) el.setAttribute('style', s); else el.removeAttribute('style');
+        el.removeAttribute('data-yv-style');
+      }
+    }
+    mods = [];
+  }
+
   function zeroTop() {
+    var path = location.pathname;
+    // leave the video / shorts pages exactly as the site built them
+    if (path.indexOf('/watch') === 0 || path.indexOf('/shorts') === 0 ||
+        path.indexOf('/playlist') === 0 || path.indexOf('/embed') === 0) {
+      if (mods.length) restoreAll();
+      return;
+    }
     var target = document.querySelector('ytm-feed-filter-chip-bar-renderer') ||
                  document.querySelector('ytm-media-item');
     if (!target) return;
     if (window.scrollY > 5) return;
+    remember(target);
     target.style.setProperty('top', '0px', 'important');
     var el = target.parentElement;
     while (el && el !== document.documentElement) {
       var cs = getComputedStyle(el);
-      if (parseFloat(cs.paddingTop) > 0) el.style.setProperty('padding-top', '0', 'important');
-      if (parseFloat(cs.marginTop) > 0) el.style.setProperty('margin-top', '0', 'important');
-      // empty spacer blocks before it
+      var pt = parseFloat(cs.paddingTop) > 0;
+      var mt = parseFloat(cs.marginTop) > 0;
+      if (pt || mt) remember(el);
+      if (pt) el.style.setProperty('padding-top', '0', 'important');
+      if (mt) el.style.setProperty('margin-top', '0', 'important');
       var sib = el.previousElementSibling;
       while (sib) {
         var empty = sib.textContent.trim() === '' && !sib.querySelector('img, video, svg, input');
         if (empty && sib.getBoundingClientRect().height > 0) {
+          remember(sib);
           sib.style.setProperty('display', 'none', 'important');
         }
         sib = sib.previousElementSibling;
