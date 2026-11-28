@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var insetsController: WindowInsetsControllerCompat
 
     private var customView: View? = null
+    private var hasBrowsed = false   // true once you open anything other than the welcome page
     private var customCallback: WebChromeClient.CustomViewCallback? = null
 
     private class Tab(val box: View, val icon: ImageView, val label: TextView, val url: String)
@@ -90,12 +91,17 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- Bottom navigation ----------
     private fun setupTabs() {
-        tabs += Tab(findViewById(R.id.navHome), findViewById(R.id.navHomeIcon), findViewById(R.id.navHomeLabel), START_URL)
+        tabs += Tab(findViewById(R.id.navHome), findViewById(R.id.navHomeIcon), findViewById(R.id.navHomeLabel), BASE)
         tabs += Tab(findViewById(R.id.navShorts), findViewById(R.id.navShortsIcon), findViewById(R.id.navShortsLabel), "$BASE/shorts")
         tabs += Tab(findViewById(R.id.navSubs), findViewById(R.id.navSubsIcon), findViewById(R.id.navSubsLabel), "$BASE/feed/subscriptions")
         tabs += Tab(findViewById(R.id.navLib), findViewById(R.id.navLibIcon), findViewById(R.id.navLibLabel), "$BASE/feed/library")
         tabs.forEachIndexed { i, t ->
-            t.box.setOnClickListener { selectTab(i); web.loadUrl(t.url) }
+            t.box.setOnClickListener {
+                selectTab(i)
+                // Home shows the welcome page until you have actually used the app,
+                // after that it is the normal home feed.
+                web.loadUrl(if (i == 0 && !hasBrowsed) START_URL else t.url)
+            }
         }
         selectTab(0)
     }
@@ -176,8 +182,14 @@ class MainActivity : AppCompatActivity() {
         web.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 progress.visibility = View.VISIBLE
+                injectCss(view)
+                if (url.startsWith("http") && url != START_URL) hasBrowsed = true
                 if (!url.contains("/watch")) applyCrop(0.0)
                 selectTab(tabForUrl(url))
+            }
+
+            override fun onPageCommitVisible(view: WebView, url: String) {
+                injectCss(view)
             }
 
             override fun onPageFinished(view: WebView, url: String) {
@@ -211,6 +223,7 @@ class MainActivity : AppCompatActivity() {
         web.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView, newProgress: Int) {
                 progress.progress = newProgress
+                injectCss(view)
             }
 
             // Fullscreen video
@@ -240,14 +253,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** CSS to hide the website's own top bar / bottom bar (we draw native ones). */
-    private fun injectUi(view: WebView) {
+    /** Hides the site's own bars. Called early and often so they never flash on screen. */
+    private fun injectCss(view: WebView) {
+        val url = view.url ?: return
+        if (!url.startsWith("http") || url == START_URL) return
         val css = JSONObject.quote(HIDE_SITE_BARS_CSS)
         view.evaluateJavascript(
             "(function(){var s=document.getElementById('yvibe-css');" +
-                "if(!s){s=document.createElement('style');s.id='yvibe-css';document.head.appendChild(s);}" +
+                "if(!s){s=document.createElement('style');s.id='yvibe-css';" +
+                "(document.head||document.documentElement).appendChild(s);}" +
                 "s.textContent=$css;})();", null
         )
-        // >>> Your existing script (the one you already use in the old app) runs here.
+    }
+
+    private fun injectUi(view: WebView) {
+        injectCss(view)
         view.evaluateJavascript(USER_SCRIPT, null)
     }
 
@@ -359,8 +379,9 @@ class MainActivity : AppCompatActivity() {
 
         // Element names can change on the site; adjust if a bar reappears.
         const val HIDE_SITE_BARS_CSS = """
-            ytm-mobile-topbar-renderer { display: none !important; }
-            ytm-pivot-bar-renderer { display: none !important; }
+            ytm-mobile-topbar-renderer, header.mobile-topbar-header, .mobile-topbar-header,
+            ytm-pivot-bar-renderer, ytm-pivot-bar-item-renderer, .pivot-bar-wrapper,
+            ytm-search-header, ytm-searchbox { display: none !important; }
             ytm-feed-nudge-renderer { display: none !important; }
             ytm-home-logo { display: none !important; }
             ytm-promoted-sparkles-web-renderer, ytm-promoted-video-renderer,
@@ -520,6 +541,44 @@ class MainActivity : AppCompatActivity() {
     report(g <= 2 ? 0 : g);
   }
   setInterval(measure, 400);
+})();
+
+// ---------- hide the site's own top / bottom bars whenever they appear ----------
+(function () {
+  if (window.__yvBars) return;
+  window.__yvBars = true;
+  var sel = 'ytm-app > *, body > *, header, nav, [class*="topbar"], [class*="pivot"], ' +
+            '[class*="bottom-bar"], [class*="search-header"]';
+
+  function hide(el) {
+    el.style.setProperty('display', 'none', 'important');
+    el.setAttribute('data-yv-bar', '1');
+  }
+
+  function sweep() {
+    var vh = window.innerHeight, vw = window.innerWidth;
+    var els = document.querySelectorAll(sel);
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.getAttribute('data-yv-bar')) continue;
+      var cs = getComputedStyle(el);
+      if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
+      if (cs.display === 'none') continue;
+      var r = el.getBoundingClientRect();
+      if (r.width < vw * 0.8 || r.height > 140) continue;
+      if (el.querySelector('video, .html5-video-player')) continue;   // never touch the player
+      var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      var atBottom = r.bottom >= vh - 4 && r.top > vh - 150;
+      var atTop = r.top <= 4;
+      if (atBottom && /Home/.test(txt) && /(Shorts|You|Subscriptions)/.test(txt)) {
+        hide(el);
+      } else if (atTop && (el.querySelector('input, [role="search"], ytm-searchbox, ytm-home-logo') ||
+                 /topbar|search-header/i.test(el.tagName + ' ' + el.className))) {
+        hide(el);
+      }
+    }
+  }
+  setInterval(sweep, 300);
 })();
 
 // ---------- ads ----------
