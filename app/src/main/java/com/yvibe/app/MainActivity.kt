@@ -4,11 +4,13 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.webkit.JavascriptInterface
@@ -50,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private var statusTop = 0
     private var navInset = 0
     private var watchMode = false
+    private var shortsMode = false
     private var hasBrowsed = false   // true once you open anything other than the welcome page
 
     private class Tab(
@@ -142,6 +145,36 @@ class MainActivity : AppCompatActivity() {
         }
         container.layoutParams = clp
         applyHeaderPadding()
+    }
+
+    // Shorts: show the player as a rounded card that stops above the bottom bar
+    private fun setShortsMode(on: Boolean) {
+        if (on == shortsMode) return
+        shortsMode = on
+        val container = findViewById<View>(R.id.webContainer)
+        val clp = container.layoutParams as LinearLayout.LayoutParams
+        val corners = listOf<View>(findViewById(R.id.cornerTl), findViewById(R.id.cornerTr))
+        if (on) {
+            clp.leftMargin = dp(12)
+            clp.rightMargin = dp(12)
+            clp.topMargin = dp(6)
+            clp.bottomMargin = navInset + dp(14 + 72 + 10)
+            container.outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, dp(24).toFloat())
+                }
+            }
+            container.clipToOutline = true
+            corners.forEach { it.visibility = View.GONE }
+        } else {
+            clp.leftMargin = 0
+            clp.rightMargin = 0
+            clp.topMargin = 0
+            clp.bottomMargin = 0
+            container.clipToOutline = false
+            if (!watchMode) corners.forEach { it.visibility = View.VISIBLE }
+        }
+        container.layoutParams = clp
     }
 
     // ---------- Header: menu, search, bell ----------
@@ -266,6 +299,11 @@ class MainActivity : AppCompatActivity() {
         fun watch(on: Boolean) {
             runOnUiThread { setWatchMode(on) }
         }
+
+        @JavascriptInterface
+        fun shorts(on: Boolean) {
+            runOnUiThread { setShortsMode(on) }
+        }
     }
 
     private fun applyCrop(cssPx: Double) {
@@ -301,6 +339,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (!url.contains("/watch")) applyCrop(0.0)
                 setWatchMode(url.contains("/watch"))
+                setShortsMode(url.contains("/shorts"))
                 selectTab(tabForUrl(url))
             }
 
@@ -685,10 +724,12 @@ class MainActivity : AppCompatActivity() {
 (function () {
   if (window.__yvMode) return;
   window.__yvMode = true;
-  var last = null;
+  var last = null, lastS = null;
   function tick() {
     var w = location.pathname.indexOf('/watch') === 0;
     if (w !== last) { last = w; try { YV.watch(w); } catch (e) {} }
+    var sh = location.pathname.indexOf('/shorts') === 0;
+    if (sh !== lastS) { lastS = sh; try { YV.shorts(sh); } catch (e) {} }
   }
   tick();
   setInterval(tick, 300);
@@ -790,11 +831,12 @@ class MainActivity : AppCompatActivity() {
 
   function skin() {
     var p = location.pathname;
-    if (p.indexOf('/watch') === 0 || p.indexOf('/shorts') === 0) return;
+    if (p.indexOf('/shorts') === 0) return;
     if (!document.body) return;
+    var onWatch = p.indexOf('/watch') === 0;
 
     // chips
-    var first = findAllChip();
+    var first = onWatch ? null : findAllChip();
     if (first) {
       var cls = first.classList.length ? first.classList[0] : '';
       var sel = first.tagName + (cls ? '.' + CSS.escape(cls) : '');
@@ -836,6 +878,8 @@ class MainActivity : AppCompatActivity() {
       var img = imgs[k];
       var ir = img.getBoundingClientRect();
       if (ir.width < 250 || ir.height < 120) continue;
+      if (onWatch && img.closest('.html5-video-player, #player, ytm-player, .player-container, #player-container-id')) continue;
+      if (onWatch && ir.top < 120 && window.scrollY < 5) continue;
       var best = img, cur = img;
       for (var d = 0; d < 4; d++) {
         var par = cur.parentElement;
