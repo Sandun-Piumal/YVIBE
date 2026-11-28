@@ -130,9 +130,8 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="-30dp"
-            android:background="@drawable/bg_web_top"
-            android:clipToOutline="true">
+            android:layout_marginTop="-20dp"
+            android:background="@color/lavender">
 
             <WebView
                 android:id="@+id/webView"
@@ -147,6 +146,18 @@
                 android:progressTint="@color/purple"
                 android:max="100"
                 android:visibility="gone" />
+
+            <!-- rounded top corners of the page (drawn over the web view) -->
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="top|start"
+                android:src="@drawable/corner_tl" />
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="top|end"
+                android:src="@drawable/corner_tr" />
         </FrameLayout>
     </LinearLayout>
 
