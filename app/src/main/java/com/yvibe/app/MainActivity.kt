@@ -238,7 +238,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val WELCOME_HTML = """
 <!doctype html>
-<html lang="si">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -247,7 +247,7 @@ class MainActivity : AppCompatActivity() {
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
   body{
-    font-family:system-ui,-apple-system,"Noto Sans Sinhala","Noto Sans",Roboto,sans-serif;
+    font-family:system-ui,-apple-system,"Noto Sans",Roboto,sans-serif;
     color:#1b1a33;
     background:linear-gradient(180deg,#edebff 0%,#dcebff 50%,#fbe3f3 100%);
     min-height:100vh;overflow-x:hidden;position:relative;
@@ -257,16 +257,21 @@ class MainActivity : AppCompatActivity() {
   .o2{width:220px;height:220px;background:#18c6ff;right:-90px;top:42%;animation-delay:-3s}
   .o3{width:240px;height:240px;background:#ff5fb7;left:-40px;bottom:-60px;animation-delay:-6s}
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+  @keyframes bob{0%,100%{transform:translateY(3px)}50%{transform:translateY(-3px)}}
   main{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
-       padding:44px 22px 32px;text-align:center;min-height:100vh}
+       padding:40px 24px 32px;text-align:center;min-height:100vh}
   .logo{width:96px;height:96px;border-radius:30px;display:flex;align-items:center;justify-content:center;
         background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(255,255,255,.45));
         border:1.5px solid #fff;box-shadow:0 18px 40px rgba(90,80,160,.28)}
-  h1{margin:22px 0 6px;font-size:30px;line-height:1.15;letter-spacing:-.6px;font-weight:800}
+  .brand{margin:18px 0 0;font-size:15px;font-weight:800;letter-spacing:3px;color:#58567a}
+  h1{margin:16px 0 10px;font-size:32px;line-height:1.15;letter-spacing:-.8px;font-weight:800}
   h1 span{background:linear-gradient(90deg,#6a4dff,#18a6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .sub{margin:0;font-size:15px;color:#58567a;line-height:1.5}
-  .si{margin:8px 0 0;font-size:16px;font-weight:600;color:#3a3860;line-height:1.6}
-  .label{margin:30px 0 12px;font-size:13px;font-weight:700;color:#58567a;letter-spacing:.4px;text-transform:uppercase}
+  .sub{margin:0;max-width:300px;font-size:16px;color:#58567a;line-height:1.55}
+  .pointer{margin-top:22px;display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:24px;
+           background:rgba(255,255,255,.72);border:1px solid #fff;font-weight:700;font-size:14px;color:#3a3860;
+           box-shadow:0 10px 24px rgba(90,80,160,.16)}
+  .pointer svg{animation:bob 1.4s ease-in-out infinite}
+  .label{margin:32px 0 12px;font-size:13px;font-weight:700;color:#58567a;letter-spacing:.4px;text-transform:uppercase}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:360px}
   a.card{display:flex;align-items:center;gap:10px;padding:14px;border-radius:22px;text-decoration:none;color:#1b1a33;
          background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.95);
@@ -279,10 +284,6 @@ class MainActivity : AppCompatActivity() {
   .d4{background:linear-gradient(135deg,#ffd36e,#ff7a7a)}
   .d5{background:linear-gradient(135deg,#18a6ff,#6a4dff)}
   .d6{background:linear-gradient(135deg,#ff7ac8,#7c5cff)}
-  a.home{margin-top:22px;display:flex;align-items:center;justify-content:center;width:100%;max-width:360px;height:54px;
-         border-radius:27px;background:#1b1a33;color:#fff;text-decoration:none;font-weight:700;font-size:15px;
-         box-shadow:0 14px 30px rgba(27,26,51,.3)}
-  .foot{margin-top:auto;padding-top:28px;font-size:12px;color:#7a789a}
 </style>
 </head>
 <body>
@@ -295,12 +296,17 @@ class MainActivity : AppCompatActivity() {
       <path d="M30 24.500v23l19-11.500z" fill="url(#g)" stroke="url(#g)" stroke-width="3" stroke-linejoin="round"/>
     </svg>
   </div>
+  <div class="brand">YVIBE</div>
 
-  <h1>Welcome to <span>YVIBE</span></h1>
-  <p class="sub">Watch without the noise</p>
-  <p class="si">ඔබ කැමති දේ, බාධාවකින් තොරව බලන්න</p>
+  <h1>Search for your<br><span>next favourite video</span></h1>
+  <p class="sub">Songs, shows, news, tutorials or anything you feel like watching. Just search and press play.</p>
 
-  <div class="label">Start watching</div>
+  <div class="pointer">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6a4dff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+    Type in the search bar above
+  </div>
+
+  <div class="label">Or start with</div>
   <div class="grid">
     <a class="card" href="https://m.youtube.com/results?search_query=trending+videos"><span class="dot d1"></span>Trending</a>
     <a class="card" href="https://m.youtube.com/results?search_query=sinhala+songs"><span class="dot d2"></span>Sinhala songs</a>
@@ -309,9 +315,6 @@ class MainActivity : AppCompatActivity() {
     <a class="card" href="https://m.youtube.com/results?search_query=news+today"><span class="dot d5"></span>News</a>
     <a class="card" href="https://m.youtube.com/results?search_query=live"><span class="dot d6"></span>Live</a>
   </div>
-
-  <a class="home" href="https://m.youtube.com/">Open my home feed</a>
-  <div class="foot">Use the search bar above to find anything</div>
 </main>
 </body>
 </html>
