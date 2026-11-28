@@ -51,6 +51,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_YVIBE)          // leave the splash theme
         super.onCreate(savedInstanceState)
+        hasBrowsed = getSharedPreferences("yvibe", MODE_PRIVATE).getBoolean("used", false)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
 
@@ -86,7 +87,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        if (savedInstanceState == null) web.loadUrl(START_URL) else web.restoreState(savedInstanceState)
+        if (savedInstanceState == null) web.loadUrl(if (hasBrowsed) BASE else START_URL) else web.restoreState(savedInstanceState)
     }
 
     // ---------- Bottom navigation ----------
@@ -183,7 +184,10 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 progress.visibility = View.VISIBLE
                 injectCss(view)
-                if (url.startsWith("http") && url != START_URL) hasBrowsed = true
+                if (url.startsWith("http") && url != START_URL && !hasBrowsed) {
+                    hasBrowsed = true
+                    getSharedPreferences("yvibe", MODE_PRIVATE).edit().putBoolean("used", true).apply()
+                }
                 if (!url.contains("/watch")) applyCrop(0.0)
                 selectTab(tabForUrl(url))
             }
@@ -437,6 +441,9 @@ class MainActivity : AppCompatActivity() {
     var nudge = findText('Try searching to get started');
     if (!nudge) return;
 
+    // empty home (nothing watched yet): show our welcome page instead
+    location.replace('https://yvibe.local/welcome');
+    return;
     var nudgeBox = up(nudge, 4);
 
     // the site's own search row (placeholder text or input)
