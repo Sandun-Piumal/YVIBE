@@ -153,28 +153,30 @@ class MainActivity : AppCompatActivity() {
         shortsMode = on
         val container = findViewById<View>(R.id.webContainer)
         val clp = container.layoutParams as LinearLayout.LayoutParams
-        val corners = listOf<View>(findViewById(R.id.cornerTl), findViewById(R.id.cornerTr))
+        val wlp = web.layoutParams as FrameLayout.LayoutParams
+        clp.topMargin = 0
+        clp.leftMargin = 0
+        clp.rightMargin = 0
         if (on) {
-            clp.leftMargin = dp(12)
-            clp.rightMargin = dp(12)
-            clp.topMargin = dp(6)
             clp.bottomMargin = navInset + dp(14 + 72 + 10)
-            container.outlineProvider = object : ViewOutlineProvider() {
+            wlp.leftMargin = dp(12)
+            wlp.rightMargin = dp(12)
+            wlp.topMargin = dp(10)
+            web.outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: Outline) {
                     outline.setRoundRect(0, 0, view.width, view.height, dp(24).toFloat())
                 }
             }
-            container.clipToOutline = true
-            corners.forEach { it.visibility = View.GONE }
+            web.clipToOutline = true
         } else {
-            clp.leftMargin = 0
-            clp.rightMargin = 0
-            clp.topMargin = 0
             clp.bottomMargin = 0
-            container.clipToOutline = false
-            if (!watchMode) corners.forEach { it.visibility = View.VISIBLE }
+            wlp.leftMargin = 0
+            wlp.rightMargin = 0
+            wlp.topMargin = 0
+            web.clipToOutline = false
         }
         container.layoutParams = clp
+        web.layoutParams = wlp
     }
 
     // ---------- Header: menu, search, bell ----------
