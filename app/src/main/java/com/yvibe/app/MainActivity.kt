@@ -19,6 +19,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.ImageView
 import android.widget.PopupMenu
 import android.widget.ProgressBar
@@ -46,6 +47,9 @@ class MainActivity : AppCompatActivity() {
 
     private var customView: View? = null
     private var customCallback: WebChromeClient.CustomViewCallback? = null
+    private var statusTop = 0
+    private var navInset = 0
+    private var watchMode = false
     private var hasBrowsed = false   // true once you open anything other than the welcome page
 
     private class Tab(
@@ -80,7 +84,9 @@ class MainActivity : AppCompatActivity() {
         // header goes under the status bar, bottom nav floats above the gesture bar
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            header.setPadding(header.paddingLeft, bars.top + dp(8), header.paddingRight, header.paddingBottom)
+            statusTop = bars.top
+            navInset = bars.bottom
+            applyHeaderPadding()
             val lp = bottomNav.layoutParams as FrameLayout.LayoutParams
             lp.bottomMargin = bars.bottom + dp(14)
             bottomNav.layoutParams = lp
@@ -105,6 +111,37 @@ class MainActivity : AppCompatActivity() {
         })
 
         if (savedInstanceState == null) web.loadUrl(if (hasBrowsed) BASE else START_URL) else web.restoreState(savedInstanceState)
+    }
+
+    private fun applyHeaderPadding() {
+        if (watchMode) header.setPadding(header.paddingLeft, statusTop, header.paddingRight, 0)
+        else header.setPadding(header.paddingLeft, statusTop + dp(4), header.paddingRight, dp(28))
+    }
+
+    /** While a video is open: no purple header, no bottom bar (like the official app). */
+    private fun setWatchMode(on: Boolean) {
+        if (on == watchMode) return
+        watchMode = on
+        val container = findViewById<View>(R.id.webContainer)
+        val clp = container.layoutParams as LinearLayout.LayoutParams
+        val corners = listOf<View>(findViewById(R.id.cornerTl), findViewById(R.id.cornerTr))
+        if (on) {
+            searchInput.clearFocus()
+            normalRow.visibility = View.GONE
+            searchRow.visibility = View.GONE
+            header.setBackgroundColor(Color.BLACK)
+            clp.topMargin = 0
+            corners.forEach { it.visibility = View.GONE }
+            bottomNav.visibility = View.GONE
+        } else {
+            header.setBackgroundResource(R.drawable.bg_header)
+            normalRow.visibility = View.VISIBLE
+            clp.topMargin = -dp(20)
+            corners.forEach { it.visibility = View.VISIBLE }
+            bottomNav.visibility = View.VISIBLE
+        }
+        container.layoutParams = clp
+        applyHeaderPadding()
     }
 
     // ---------- Header: menu, search, bell ----------
@@ -224,6 +261,11 @@ class MainActivity : AppCompatActivity() {
         fun crop(cssPx: Double) {
             runOnUiThread { applyCrop(cssPx) }
         }
+
+        @JavascriptInterface
+        fun watch(on: Boolean) {
+            runOnUiThread { setWatchMode(on) }
+        }
     }
 
     private fun applyCrop(cssPx: Double) {
@@ -258,6 +300,7 @@ class MainActivity : AppCompatActivity() {
                     getSharedPreferences("yvibe", MODE_PRIVATE).edit().putBoolean("used", true).apply()
                 }
                 if (!url.contains("/watch")) applyCrop(0.0)
+                setWatchMode(url.contains("/watch"))
                 selectTab(tabForUrl(url))
             }
 
@@ -631,6 +674,19 @@ class MainActivity : AppCompatActivity() {
     }
   }
   setInterval(zeroTop, 500);
+})();
+
+// ---------- tell the app when a video page is open ----------
+(function () {
+  if (window.__yvMode) return;
+  window.__yvMode = true;
+  var last = null;
+  function tick() {
+    var w = location.pathname.indexOf('/watch') === 0;
+    if (w !== last) { last = w; try { YV.watch(w); } catch (e) {} }
+  }
+  tick();
+  setInterval(tick, 300);
 })();
 
 // ---------- cut the empty strip above the video player ----------
