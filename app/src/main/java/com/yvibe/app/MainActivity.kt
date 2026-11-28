@@ -542,6 +542,7 @@ class MainActivity : AppCompatActivity() {
 
             /* chips, pinned bar, thumbnails (classes are set by the script below) */
             .yv-pin { top: 0 !important; transform: none !important; background: #F4F0FF !important; z-index: 5 !important; }
+            .yv-gone { display: none !important; }
             .yv-chip { background: rgba(255,255,255,0.88) !important; border: 1px solid #FFFFFF !important; border-radius: 16px !important; }
             .yv-chip, .yv-chip * { color: #1E1B3A !important; }
             .yv-chip-on { background: linear-gradient(135deg, #5B21B6, #7C3AED) !important; }
@@ -653,6 +654,10 @@ class MainActivity : AppCompatActivity() {
     if (window.scrollY > 5) return;
     remember(target);
     target.style.setProperty('top', '0px', 'important');
+    // no chip bar here (search results etc.): keep a small gap under the header
+    if (target.tagName.toLowerCase() === 'ytm-media-item') {
+      target.style.setProperty('margin-top', '14px', 'important');
+    }
     var el = target.parentElement;
     while (el && el !== document.documentElement) {
       var cs = getComputedStyle(el);
@@ -803,6 +808,18 @@ class MainActivity : AppCompatActivity() {
         var dark = isDark(getComputedStyle(el).backgroundColor);
         el.classList.add('yv-chip');
         if (dark) el.classList.add('yv-chip-on');
+      }
+      // remove the compass / drawer chip that sits before "All"
+      var up = first;
+      for (var u = 0; u < 3 && up && up !== document.body; u++) {
+        var sb = up.previousElementSibling;
+        while (sb) {
+          if (sb.textContent.trim() === '' && sb.getBoundingClientRect().height < 80) {
+            sb.classList.add('yv-gone');
+          }
+          sb = sb.previousElementSibling;
+        }
+        up = up.parentElement;
       }
       // keep the chip bar pinned at the very top while scrolling
       var a = first.parentElement;
