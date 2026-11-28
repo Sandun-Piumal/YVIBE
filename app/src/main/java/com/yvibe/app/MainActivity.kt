@@ -341,7 +341,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (!url.contains("/watch")) applyCrop(0.0)
                 setWatchMode(url.contains("/watch"))
-                setShortsMode(url.contains("/shorts"))
+                setShortsMode(url.contains("/shorts") || url.contains("m.youtube.com/feed/"))
                 selectTab(tabForUrl(url))
             }
 
@@ -584,6 +584,7 @@ class MainActivity : AppCompatActivity() {
             /* chips, pinned bar, thumbnails (classes are set by the script below) */
             .yv-pin { top: 0 !important; transform: none !important; background: #F4F0FF !important; z-index: 5 !important; }
             .yv-gone { display: none !important; }
+            .yv-chip-first { margin-left: 12px !important; }
             .yv-chip { background: rgba(255,255,255,0.88) !important; border: 1px solid #FFFFFF !important; border-radius: 16px !important; }
             .yv-chip, .yv-chip * { color: #1E1B3A !important; }
             .yv-chip-on { background: linear-gradient(135deg, #5B21B6, #7C3AED) !important; }
@@ -730,7 +731,7 @@ class MainActivity : AppCompatActivity() {
   function tick() {
     var w = location.pathname.indexOf('/watch') === 0;
     if (w !== last) { last = w; try { YV.watch(w); } catch (e) {} }
-    var sh = location.pathname.indexOf('/shorts') === 0;
+    var sh = location.pathname.indexOf('/shorts') === 0 || location.pathname.indexOf('/feed/') === 0;
     if (sh !== lastS) { lastS = sh; try { YV.shorts(sh); } catch (e) {} }
   }
   tick();
@@ -836,6 +837,7 @@ class MainActivity : AppCompatActivity() {
     if (p.indexOf('/shorts') === 0) return;
     if (!document.body) return;
     var onWatch = p.indexOf('/watch') === 0;
+    var onFeed = p.indexOf('/feed/') === 0;
 
     // chips
     var first = onWatch ? null : findAllChip();
@@ -853,6 +855,7 @@ class MainActivity : AppCompatActivity() {
         el.classList.add('yv-chip');
         if (dark) el.classList.add('yv-chip-on');
       }
+      first.classList.add('yv-chip-first');
       // remove the compass / drawer chip that sits before "All"
       var up = first;
       for (var u = 0; u < 3 && up && up !== document.body; u++) {
@@ -879,6 +882,7 @@ class MainActivity : AppCompatActivity() {
     for (var k = 0; k < imgs.length; k++) {
       var img = imgs[k];
       var ir = img.getBoundingClientRect();
+      if (onFeed) break;
       if (ir.width < 250 || ir.height < 120) continue;
       if (onWatch && img.closest('.html5-video-player, #player, ytm-player, .player-container, #player-container-id')) continue;
       if (onWatch && ir.top < 120 && window.scrollY < 5) continue;
@@ -935,9 +939,25 @@ class MainActivity : AppCompatActivity() {
       if (isFinite(v.duration) && v.duration > 0) v.currentTime = v.duration;
       v.playbackRate = 16;
     } else if (v && muteSaved !== null) {
-      v.muted = muteSaved;
+      v.muted = false;
       v.playbackRate = 1;
       muteSaved = null;
+    }
+    // always start with sound on (watch + shorts pages only, once per video)
+    var pp = location.pathname;
+    if (v && !adOn && (pp.indexOf('/watch') === 0 || pp.indexOf('/shorts') === 0)) {
+      if (!v.__yvHook) {
+        v.__yvHook = true;
+        v.addEventListener('loadstart', function () { v.__yvUn = false; });
+      }
+      if (!v.paused && !v.__yvUn) {
+        v.__yvUn = true;
+        if (v.muted) {
+          v.muted = false;
+          try { var mp = document.getElementById('movie_player'); if (mp && mp.unMute) mp.unMute(); } catch (e) {}
+        }
+        if (v.volume < 0.05) v.volume = 1;
+      }
     }
     var btns = document.querySelectorAll(
       '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, ' +
