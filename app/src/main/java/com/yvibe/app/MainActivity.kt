@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyHeaderPadding() {
         if (watchMode) header.setPadding(header.paddingLeft, statusTop, header.paddingRight, 0)
-        else header.setPadding(header.paddingLeft, statusTop + dp(4), header.paddingRight, dp(28))
+        else header.setPadding(header.paddingLeft, statusTop + dp(4), header.paddingRight, dp(10))
     }
 
     /** While a video is open: no purple header, no bottom bar (like the official app). */
@@ -136,7 +136,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             header.setBackgroundResource(R.drawable.bg_header)
             normalRow.visibility = View.VISIBLE
-            clp.topMargin = -dp(20)
+            clp.topMargin = 0
             corners.forEach { it.visibility = View.VISIBLE }
             bottomNav.visibility = View.VISIBLE
         }
@@ -524,7 +524,7 @@ class MainActivity : AppCompatActivity() {
                 background: rgba(255,255,255,0.8) !important;
                 border: 1px solid #FFFFFF !important;
                 border-radius: 16px !important;
-                box-shadow: 0 6px 16px rgba(124,58,237,0.14) !important;
+               
                 color: #1E1B3A !important;
             }
             ytm-chip-cloud-chip-renderer[selected] .chip-container,
@@ -533,7 +533,7 @@ class MainActivity : AppCompatActivity() {
             ytm-chip-cloud-chip-renderer .chip-container[aria-selected="true"] {
                 background: linear-gradient(135deg, #5B21B6, #7C3AED) !important;
                 color: #FFFFFF !important;
-                box-shadow: 0 8px 20px rgba(124,58,237,0.45) !important;
+               
             }
             .media-item-thumbnail-container, ytm-thumbnail-cover, .video-thumbnail-container-large {
                 border-radius: 16px !important;
@@ -542,9 +542,9 @@ class MainActivity : AppCompatActivity() {
 
             /* chips, pinned bar, thumbnails (classes are set by the script below) */
             .yv-pin { top: 0 !important; transform: none !important; background: #F4F0FF !important; z-index: 5 !important; }
-            .yv-chip { background: rgba(255,255,255,0.88) !important; border: 1px solid #FFFFFF !important; border-radius: 16px !important; box-shadow: 0 6px 16px rgba(124,58,237,0.14) !important; }
+            .yv-chip { background: rgba(255,255,255,0.88) !important; border: 1px solid #FFFFFF !important; border-radius: 16px !important; }
             .yv-chip, .yv-chip * { color: #1E1B3A !important; }
-            .yv-chip-on { background: linear-gradient(135deg, #5B21B6, #7C3AED) !important; box-shadow: 0 8px 20px rgba(124,58,237,0.45) !important; }
+            .yv-chip-on { background: linear-gradient(135deg, #5B21B6, #7C3AED) !important; }
             .yv-chip-on, .yv-chip-on * { color: #FFFFFF !important; }
             .yv-thumb { margin-left: 12px !important; margin-right: 12px !important; width: auto !important; border-radius: 16px !important; overflow: hidden !important; }
         """
