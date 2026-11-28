@@ -1,0 +1,8 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="0" android:startColor="#A25BFF" android:centerColor="#7F35F0" android:endColor="#6A27D6" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/header_waves" />
+</layer-list>
