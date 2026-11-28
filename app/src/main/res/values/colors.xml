@@ -1,12 +1,8 @@
 <resources>
-    <color name="bg_top">#EDEBFF</color>
-    <color name="bg_mid">#DCEBFF</color>
-    <color name="bg_bottom">#FBE3F3</color>
-    <color name="ink">#1B1A33</color>
-    <color name="ink_sub">#58567A</color>
-    <color name="glass">#8CFFFFFF</color>
-    <color name="glass_stroke">#E6FFFFFF</color>
-    <color name="accent">#6A4DFF</color>
-    <color name="accent2">#18A6FF</color>
+    <color name="lavender">#F4F0FF</color>
+    <color name="purple">#7C3AED</color>
+    <color name="purple_dark">#4C1D95</color>
+    <color name="ink">#1E1B3A</color>
+    <color name="ink_sub">#6B6890</color>
     <color name="white">#FFFFFF</color>
 </resources>
