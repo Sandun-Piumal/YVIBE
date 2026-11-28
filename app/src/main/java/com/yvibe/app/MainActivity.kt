@@ -3,6 +3,8 @@ package com.yvibe.app
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -18,6 +20,7 @@ import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
@@ -34,18 +37,24 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var web: WebView
     private lateinit var progress: ProgressBar
-    private lateinit var topBar: View
-    private lateinit var bottomNav: View
-    private lateinit var webContainer: View
+    private lateinit var header: View
+    private lateinit var normalRow: View
+    private lateinit var searchRow: View
     private lateinit var searchInput: EditText
+    private lateinit var bottomNav: View
     private lateinit var insetsController: WindowInsetsControllerCompat
 
     private var customView: View? = null
-    private var hasBrowsed = false   // true once you open anything other than the welcome page
     private var customCallback: WebChromeClient.CustomViewCallback? = null
+    private var hasBrowsed = false   // true once you open anything other than the welcome page
 
-    private class Tab(val box: View, val icon: ImageView, val label: TextView, val url: String)
+    private class Tab(
+        val box: View, val icon: ImageView, val label: TextView, val bar: View,
+        val url: String, val outline: Int, val filled: Int
+    )
     private val tabs = mutableListOf<Tab>()
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,29 +67,37 @@ class MainActivity : AppCompatActivity() {
         val root = findViewById<View>(R.id.root)
         web = findViewById(R.id.webView)
         progress = findViewById(R.id.progress)
-        topBar = findViewById(R.id.topBar)
-        bottomNav = findViewById(R.id.bottomNav)
-        webContainer = findViewById(R.id.webContainer)
+        header = findViewById(R.id.header)
+        normalRow = findViewById(R.id.normalRow)
+        searchRow = findViewById(R.id.searchRow)
         searchInput = findViewById(R.id.searchInput)
+        bottomNav = findViewById(R.id.bottomNav)
 
         insetsController = WindowInsetsControllerCompat(window, root)
-        insetsController.isAppearanceLightStatusBars = true
+        insetsController.isAppearanceLightStatusBars = false      // white icons on the purple header
         insetsController.isAppearanceLightNavigationBars = true
 
-        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+        // header goes under the status bar, bottom nav floats above the gesture bar
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(0, bars.top, 0, bars.bottom)
+            header.setPadding(header.paddingLeft, bars.top + dp(8), header.paddingRight, header.paddingBottom)
+            val lp = bottomNav.layoutParams as FrameLayout.LayoutParams
+            lp.bottomMargin = bars.bottom + dp(14)
+            bottomNav.layoutParams = lp
             insets
         }
 
+        web.setBackgroundColor(Color.TRANSPARENT)
+
+        setupHeader()
         setupTabs()
-        setupSearch()
         setupWebView()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 when {
                     customView != null -> hideCustomView()
+                    searchRow.visibility == View.VISIBLE -> closeSearch()
                     web.canGoBack() -> web.goBack()
                     else -> finish()
                 }
@@ -90,12 +107,78 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) web.loadUrl(if (hasBrowsed) BASE else START_URL) else web.restoreState(savedInstanceState)
     }
 
+    // ---------- Header: menu, search, bell ----------
+    private fun setupHeader() {
+        findViewById<View>(R.id.menuBtn).setOnClickListener { v ->
+            val m = PopupMenu(this, v)
+            m.menu.add(0, 0, 0, "Home")
+            m.menu.add(0, 1, 1, "Subscriptions")
+            m.menu.add(0, 2, 2, "History")
+            m.menu.add(0, 3, 3, "Playlists")
+            m.menu.add(0, 4, 4, "Liked videos")
+            m.menu.add(0, 5, 5, "Watch later")
+            m.setOnMenuItemClickListener { item ->
+                val url = when (item.itemId) {
+                    0 -> if (hasBrowsed) BASE else START_URL
+                    1 -> "$BASE/feed/subscriptions"
+                    2 -> "$BASE/feed/history"
+                    3 -> "$BASE/feed/library"
+                    4 -> "$BASE/playlist?list=LL"
+                    else -> "$BASE/playlist?list=WL"
+                }
+                web.loadUrl(url)
+                true
+            }
+            m.show()
+        }
+
+        findViewById<View>(R.id.bellBtn).setOnClickListener {
+            findViewById<View>(R.id.bellDot).visibility = View.GONE   // the red dot is cosmetic
+            web.loadUrl("$BASE/feed/notifications")
+        }
+
+        findViewById<View>(R.id.searchBtn).setOnClickListener { openSearch() }
+        findViewById<View>(R.id.searchBack).setOnClickListener { closeSearch() }
+        findViewById<View>(R.id.searchGo).setOnClickListener { doSearch() }
+        searchInput.setOnEditorActionListener { _, id, _ ->
+            if (id == EditorInfo.IME_ACTION_SEARCH) { doSearch(); true } else false
+        }
+    }
+
+    private fun imm() = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+
+    private fun openSearch() {
+        normalRow.visibility = View.GONE
+        searchRow.visibility = View.VISIBLE
+        searchInput.requestFocus()
+        imm().showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun closeSearch() {
+        searchRow.visibility = View.GONE
+        normalRow.visibility = View.VISIBLE
+        searchInput.clearFocus()
+        imm().hideSoftInputFromWindow(searchInput.windowToken, 0)
+    }
+
+    private fun doSearch() {
+        val q = searchInput.text.toString().trim()
+        if (q.isEmpty()) return
+        web.loadUrl("$BASE/results?search_query=" + Uri.encode(q))
+        closeSearch()
+    }
+
     // ---------- Bottom navigation ----------
+    private fun tab(id: String, url: String, outline: Int, filled: Int): Tab {
+        fun v(suffix: String) = findViewById<View>(resources.getIdentifier("nav$id$suffix", "id", packageName))
+        return Tab(v(""), v("Icon") as ImageView, v("Label") as TextView, v("Bar"), url, outline, filled)
+    }
+
     private fun setupTabs() {
-        tabs += Tab(findViewById(R.id.navHome), findViewById(R.id.navHomeIcon), findViewById(R.id.navHomeLabel), BASE)
-        tabs += Tab(findViewById(R.id.navShorts), findViewById(R.id.navShortsIcon), findViewById(R.id.navShortsLabel), "$BASE/shorts")
-        tabs += Tab(findViewById(R.id.navSubs), findViewById(R.id.navSubsIcon), findViewById(R.id.navSubsLabel), "$BASE/feed/subscriptions")
-        tabs += Tab(findViewById(R.id.navLib), findViewById(R.id.navLibIcon), findViewById(R.id.navLibLabel), "$BASE/feed/library")
+        tabs += tab("Home", BASE, R.drawable.ic_home, R.drawable.ic_home_f)
+        tabs += tab("Shorts", "$BASE/shorts", R.drawable.ic_shorts, R.drawable.ic_shorts_f)
+        tabs += tab("Subs", "$BASE/feed/subscriptions", R.drawable.ic_subs, R.drawable.ic_subs_f)
+        tabs += tab("You", "$BASE/feed/library", R.drawable.ic_you, R.drawable.ic_you_f)
         tabs.forEachIndexed { i, t ->
             t.box.setOnClickListener {
                 selectTab(i)
@@ -108,13 +191,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun selectTab(index: Int) {
-        val ink = ContextCompat.getColor(this, R.color.ink)
-        val white = ContextCompat.getColor(this, R.color.white)
+        val purple = ContextCompat.getColor(this, R.color.purple)
+        val sub = ContextCompat.getColor(this, R.color.ink_sub)
         tabs.forEachIndexed { i, t ->
             val on = i == index
-            t.box.setBackgroundResource(if (on) R.drawable.bg_nav_active else 0)
-            t.icon.setColorFilter(if (on) white else ink)
-            t.label.visibility = if (on) View.VISIBLE else View.GONE
+            t.icon.setImageResource(if (on) t.filled else t.outline)
+            t.icon.setColorFilter(if (on) purple else sub)
+            t.label.setTextColor(if (on) purple else sub)
+            t.label.setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
+            t.bar.visibility = if (on) View.VISIBLE else View.INVISIBLE
         }
     }
 
@@ -123,26 +208,10 @@ class MainActivity : AppCompatActivity() {
         return when {
             path.startsWith("/shorts") -> 1
             path.startsWith("/feed/subscriptions") -> 2
-            path.startsWith("/feed/library") || path.startsWith("/feed/history") -> 3
+            path.startsWith("/feed/library") || path.startsWith("/feed/history") ||
+                path.startsWith("/playlist") -> 3
             else -> 0
         }
-    }
-
-    // ---------- Search ----------
-    private fun setupSearch() {
-        val go = {
-            val q = searchInput.text.toString().trim()
-            if (q.isNotEmpty()) {
-                web.loadUrl("$BASE/results?search_query=" + Uri.encode(q))
-                searchInput.clearFocus()
-                (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager)
-                    .hideSoftInputFromWindow(searchInput.windowToken, 0)
-            }
-        }
-        searchInput.setOnEditorActionListener { _, id, _ ->
-            if (id == EditorInfo.IME_ACTION_SEARCH) { go(); true } else false
-        }
-        findViewById<View>(R.id.searchBtn).setOnClickListener { go() }
     }
 
     // ---------- remove the empty strip above the video player ----------
@@ -207,6 +276,9 @@ class MainActivity : AppCompatActivity() {
                     return WebResourceResponse(
                         "text/html", "utf-8", ByteArrayInputStream(WELCOME_HTML.toByteArray(Charsets.UTF_8))
                     )
+                }
+                if (u == LOGO_URL) {
+                    return WebResourceResponse("image/png", null, resources.openRawResource(R.drawable.yvibe_logo))
                 }
                 if (BLOCKED.any { u.contains(it) }) {
                     return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
@@ -286,6 +358,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        const val LOGO_URL = "https://yvibe.local/logo.png"
+
         const val WELCOME_HTML = """
 <!doctype html>
 <html lang="en">
@@ -298,61 +372,51 @@ class MainActivity : AppCompatActivity() {
   html,body{margin:0;height:100%}
   body{
     font-family:system-ui,-apple-system,"Noto Sans",Roboto,sans-serif;
-    color:#1b1a33;
-    background:linear-gradient(180deg,#edebff 0%,#dcebff 50%,#fbe3f3 100%);
+    color:#1e1b3a;
+    background:linear-gradient(180deg,#f8f5ff 0%,#efe6ff 55%,#fae6ff 100%);
     min-height:100vh;overflow-x:hidden;position:relative;
   }
   .orb{position:fixed;border-radius:50%;filter:blur(60px);opacity:.45;z-index:0;animation:float 9s ease-in-out infinite}
-  .o1{width:240px;height:240px;background:#7c5cff;left:-80px;top:-40px}
-  .o2{width:220px;height:220px;background:#18c6ff;right:-90px;top:42%;animation-delay:-3s}
-  .o3{width:240px;height:240px;background:#ff5fb7;left:-40px;bottom:-60px;animation-delay:-6s}
+  .o1{width:240px;height:240px;background:#a25bff;left:-80px;top:-40px}
+  .o2{width:220px;height:220px;background:#7c3aed;right:-90px;top:42%;animation-delay:-3s}
+  .o3{width:240px;height:240px;background:#ff7ad9;left:-40px;bottom:-60px;animation-delay:-6s}
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
   @keyframes bob{0%,100%{transform:translateY(3px)}50%{transform:translateY(-3px)}}
   main{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
        padding:40px 24px 32px;text-align:center;min-height:100vh}
-  .logo{width:96px;height:96px;border-radius:30px;display:flex;align-items:center;justify-content:center;
-        background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(255,255,255,.45));
-        border:1.5px solid #fff;box-shadow:0 18px 40px rgba(90,80,160,.28)}
-  .brand{margin:18px 0 0;font-size:15px;font-weight:800;letter-spacing:3px;color:#58567a}
+  .logo-img{width:250px;max-width:82%;height:auto;margin-top:6px}
   h1{margin:16px 0 10px;font-size:32px;line-height:1.15;letter-spacing:-.8px;font-weight:800}
-  h1 span{background:linear-gradient(90deg,#6a4dff,#18a6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .sub{margin:0;max-width:300px;font-size:16px;color:#58567a;line-height:1.55}
+  h1 span{background:linear-gradient(90deg,#6d28d9,#c026d3);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{margin:0;max-width:300px;font-size:16px;color:#6b6890;line-height:1.55}
   .pointer{margin-top:22px;display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:24px;
-           background:rgba(255,255,255,.72);border:1px solid #fff;font-weight:700;font-size:14px;color:#3a3860;
-           box-shadow:0 10px 24px rgba(90,80,160,.16)}
+           background:rgba(255,255,255,.72);border:1px solid #fff;font-weight:700;font-size:14px;color:#3b2a6b;
+           box-shadow:0 10px 24px rgba(124,58,237,.18)}
   .pointer svg{animation:bob 1.4s ease-in-out infinite}
-  .label{margin:32px 0 12px;font-size:13px;font-weight:700;color:#58567a;letter-spacing:.4px;text-transform:uppercase}
+  .label{margin:32px 0 12px;font-size:13px;font-weight:700;color:#6b6890;letter-spacing:.4px;text-transform:uppercase}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:360px}
-  a.card{display:flex;align-items:center;gap:10px;padding:14px;border-radius:22px;text-decoration:none;color:#1b1a33;
+  a.card{display:flex;align-items:center;gap:10px;padding:14px;border-radius:22px;text-decoration:none;color:#1e1b3a;
          background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.95);
-         box-shadow:0 10px 26px rgba(90,80,160,.16);font-weight:700;font-size:14px}
+         box-shadow:0 10px 26px rgba(124,58,237,.16);font-weight:700;font-size:14px}
   a.card:active{transform:scale(.97)}
   .dot{width:34px;height:34px;border-radius:12px;flex:none}
-  .d1{background:linear-gradient(135deg,#ff5fb7,#ffb36e)}
-  .d2{background:linear-gradient(135deg,#7c5cff,#18c6ff)}
-  .d3{background:linear-gradient(135deg,#34e0a1,#18a6ff)}
-  .d4{background:linear-gradient(135deg,#ffd36e,#ff7a7a)}
-  .d5{background:linear-gradient(135deg,#18a6ff,#6a4dff)}
-  .d6{background:linear-gradient(135deg,#ff7ac8,#7c5cff)}
+  .d1{background:linear-gradient(135deg,#ff7ad9,#ffb36e)}
+  .d2{background:linear-gradient(135deg,#7c3aed,#a855f7)}
+  .d3{background:linear-gradient(135deg,#6d28d9,#38bdf8)}
+  .d4{background:linear-gradient(135deg,#f59e0b,#ef4444)}
+  .d5{background:linear-gradient(135deg,#38bdf8,#7c3aed)}
+  .d6{background:linear-gradient(135deg,#ec4899,#7c3aed)}
 </style>
 </head>
 <body>
 <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
 <main>
-  <div class="logo">
-    <svg width="58" height="58" viewBox="0 0 72 72" fill="none" aria-hidden="true">
-      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a4dff"/><stop offset="1" stop-color="#18a6ff"/></linearGradient></defs>
-      <circle cx="36" cy="36" r="27" stroke="url(#g)" stroke-width="4"/>
-      <path d="M30 24.500v23l19-11.500z" fill="url(#g)" stroke="url(#g)" stroke-width="3" stroke-linejoin="round"/>
-    </svg>
-  </div>
-  <div class="brand">YVIBE</div>
+  <img class="logo-img" src="https://yvibe.local/logo.png" alt="YVIBE">
 
   <h1>Search for your<br><span>next favourite video</span></h1>
   <p class="sub">Songs, shows, news, tutorials or anything you feel like watching. Just search and press play.</p>
 
   <div class="pointer">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6a4dff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
     Type in the search bar above
   </div>
 
@@ -383,11 +447,13 @@ class MainActivity : AppCompatActivity() {
 
         // Element names can change on the site; adjust if a bar reappears.
         const val HIDE_SITE_BARS_CSS = """
+            /* site's own bars (we draw native ones) */
             ytm-mobile-topbar-renderer, header.mobile-topbar-header, .mobile-topbar-header,
             ytm-pivot-bar-renderer, ytm-pivot-bar-item-renderer, .pivot-bar-wrapper,
-            ytm-search-header, ytm-searchbox { display: none !important; }
-            ytm-feed-nudge-renderer { display: none !important; }
-            ytm-home-logo { display: none !important; }
+            ytm-search-header, ytm-searchbox,
+            ytm-feed-nudge-renderer, ytm-home-logo { display: none !important; }
+
+            /* ads */
             ytm-promoted-sparkles-web-renderer, ytm-promoted-video-renderer,
             ytm-companion-ad-renderer, ytm-ad-slot-renderer,
             ytm-in-feed-ad-layout-renderer, ytm-display-ad-renderer,
@@ -395,6 +461,41 @@ class MainActivity : AppCompatActivity() {
             .ytp-ad-overlay-container, .ytp-ad-module, .ad-container,
             ytm-rich-item-renderer:has(ytm-ad-slot-renderer),
             ytm-item-section-renderer:has(ytm-ad-slot-renderer) { display: none !important; }
+
+            /* ---------- YVIBE purple skin ---------- */
+            html, body, ytm-app { background: #F4F0FF !important; }
+            html {
+                --yt-spec-base-background: #F4F0FF !important;
+                --yt-spec-general-background-a: #F4F0FF !important;
+                --yt-spec-general-background-b: #F4F0FF !important;
+                --yt-spec-general-background-c: #F4F0FF !important;
+                --yt-spec-text-primary: #1E1B3A !important;
+                --yt-spec-text-secondary: #6B6890 !important;
+            }
+            ytm-browse, ytm-search, ytm-watch, ytm-feed-filter-chip-bar-renderer {
+                background: transparent !important;
+            }
+            body { padding-bottom: 100px !important; }
+
+            ytm-chip-cloud-chip-renderer .chip-container {
+                background: rgba(255,255,255,0.8) !important;
+                border: 1px solid #FFFFFF !important;
+                border-radius: 16px !important;
+                box-shadow: 0 6px 16px rgba(124,58,237,0.14) !important;
+                color: #1E1B3A !important;
+            }
+            ytm-chip-cloud-chip-renderer[selected] .chip-container,
+            ytm-chip-cloud-chip-renderer.selected .chip-container,
+            ytm-chip-cloud-chip-renderer .chip-container.selected,
+            ytm-chip-cloud-chip-renderer .chip-container[aria-selected="true"] {
+                background: linear-gradient(135deg, #5B21B6, #7C3AED) !important;
+                color: #FFFFFF !important;
+                box-shadow: 0 8px 20px rgba(124,58,237,0.45) !important;
+            }
+            .media-item-thumbnail-container, ytm-thumbnail-cover, .video-thumbnail-container-large {
+                border-radius: 16px !important;
+                overflow: hidden !important;
+            }
         """
 
         // PASTE YOUR EXISTING SCRIPT BETWEEN THE QUOTES BELOW
