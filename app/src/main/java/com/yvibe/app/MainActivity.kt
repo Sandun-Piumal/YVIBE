@@ -11,6 +11,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.EditText
@@ -26,6 +27,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -157,6 +159,14 @@ class MainActivity : AppCompatActivity() {
                 injectUi(view)
             }
 
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                val u = request.url.toString()
+                if (BLOCKED.any { u.contains(it) }) {
+                    return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
+                }
+                return super.shouldInterceptRequest(view, request)
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val host = request.url.host ?: return false
                 val internal = host.endsWith("youtube.com") || host.endsWith("google.com") ||
@@ -226,6 +236,12 @@ class MainActivity : AppCompatActivity() {
         // First page shown when the app opens (and for the Home tab).
         const val START_URL = BASE
 
+        // Requests containing any of these are dropped (ad servers / ad tracking)
+        val BLOCKED = listOf(
+            "doubleclick.net", "googlesyndication.com", "googleadservices.com",
+            "/pagead/", "/api/stats/ads", "/ptracking", "/get_midroll_info"
+        )
+
         // Element names can change on the site; adjust if a bar reappears.
         const val HIDE_SITE_BARS_CSS = """
             ytm-mobile-topbar-renderer { display: none !important; }
@@ -233,6 +249,13 @@ class MainActivity : AppCompatActivity() {
             ytm-feed-nudge-renderer { display: none !important; }
             ytm-home-logo { display: none !important; }
             body { padding-top: 0 !important; }
+            ytm-promoted-sparkles-web-renderer, ytm-promoted-video-renderer,
+            ytm-companion-ad-renderer, ytm-ad-slot-renderer,
+            ytm-in-feed-ad-layout-renderer, ytm-display-ad-renderer,
+            ytm-statement-banner-renderer, ytm-brand-video-singleton-renderer,
+            .ytp-ad-overlay-container, .ytp-ad-module, .ad-container,
+            ytm-rich-item-renderer:has(ytm-ad-slot-renderer),
+            ytm-item-section-renderer:has(ytm-ad-slot-renderer) { display: none !important; }
         """
 
         // PASTE YOUR EXISTING SCRIPT BETWEEN THE QUOTES BELOW
@@ -298,6 +321,85 @@ class MainActivity : AppCompatActivity() {
 
   clean();
   setInterval(clean, 400);
+})();
+
+// ---------- remove the empty space at the top ----------
+(function () {
+  function zeroTop() {
+    var target = document.querySelector('ytm-feed-filter-chip-bar-renderer') ||
+                 document.querySelector('ytm-media-item');
+    if (!target) return;
+    if (window.scrollY > 5) return;
+    target.style.setProperty('top', '0px', 'important');
+    var el = target.parentElement;
+    while (el && el !== document.documentElement) {
+      var cs = getComputedStyle(el);
+      if (parseFloat(cs.paddingTop) > 0) el.style.setProperty('padding-top', '0', 'important');
+      if (parseFloat(cs.marginTop) > 0) el.style.setProperty('margin-top', '0', 'important');
+      // empty spacer blocks before it
+      var sib = el.previousElementSibling;
+      while (sib) {
+        var empty = sib.textContent.trim() === '' && !sib.querySelector('img, video, svg, input');
+        if (empty && sib.getBoundingClientRect().height > 0) {
+          sib.style.setProperty('display', 'none', 'important');
+        }
+        sib = sib.previousElementSibling;
+      }
+      el = el.parentElement;
+    }
+  }
+  setInterval(zeroTop, 500);
+})();
+
+// ---------- ads ----------
+(function () {
+  if (window.__yvibeAds) return;
+  window.__yvibeAds = true;
+
+  // strip ad data from the player/feed JSON before the page uses it
+  function strip(o) {
+    try {
+      if (!o || typeof o !== 'object') return o;
+      if (o.adPlacements) o.adPlacements = [];
+      if (o.playerAds) o.playerAds = [];
+      if (o.adSlots) o.adSlots = [];
+      if (o.playerResponse) strip(o.playerResponse);
+      if (o.response) strip(o.response);
+    } catch (e) {}
+    return o;
+  }
+  var origParse = JSON.parse;
+  JSON.parse = function () { return strip(origParse.apply(this, arguments)); };
+  if (window.Response && Response.prototype.json) {
+    var origJson = Response.prototype.json;
+    Response.prototype.json = function () {
+      return origJson.apply(this, arguments).then(strip);
+    };
+  }
+
+  // skip video ads that still get through
+  var muteSaved = null;
+  function tick() {
+    var player = document.querySelector('.html5-video-player');
+    var v = document.querySelector('video');
+    var adOn = player && player.classList.contains('ad-showing');
+    if (adOn && v) {
+      if (muteSaved === null) muteSaved = v.muted;
+      v.muted = true;
+      if (isFinite(v.duration) && v.duration > 0) v.currentTime = v.duration;
+      v.playbackRate = 16;
+    } else if (v && muteSaved !== null) {
+      v.muted = muteSaved;
+      v.playbackRate = 1;
+      muteSaved = null;
+    }
+    var btns = document.querySelectorAll(
+      '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, ' +
+      '.ytp-ad-skip-button-container button, .ytp-ad-overlay-close-button'
+    );
+    for (var i = 0; i < btns.length; i++) btns[i].click();
+  }
+  setInterval(tick, 300);
 })();
 """
     }
