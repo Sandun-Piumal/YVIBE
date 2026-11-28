@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -137,6 +138,28 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.searchBtn).setOnClickListener { go() }
     }
 
+    // ---------- remove the empty strip above the video player ----------
+    // The page tells us how tall that strip is (in CSS px); we slide the WebView up by that
+    // amount so the strip is clipped off, and extend it at the bottom so nothing is lost.
+    private var cropPx = 0
+
+    private inner class CropBridge {
+        @JavascriptInterface
+        fun crop(cssPx: Double) {
+            runOnUiThread { applyCrop(cssPx) }
+        }
+    }
+
+    private fun applyCrop(cssPx: Double) {
+        val px = (cssPx * resources.displayMetrics.density).toInt().coerceIn(0, 400)
+        if (px == cropPx) return
+        cropPx = px
+        val lp = web.layoutParams as FrameLayout.LayoutParams
+        lp.bottomMargin = -px
+        web.layoutParams = lp
+        web.translationY = -px.toFloat()
+    }
+
     // ---------- WebView ----------
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
@@ -148,9 +171,12 @@ class MainActivity : AppCompatActivity() {
             mediaPlaybackRequiresUserGesture = false
         }
 
+        web.addJavascriptInterface(CropBridge(), "YV")
+
         web.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 progress.visibility = View.VISIBLE
+                if (!url.contains("/watch")) applyCrop(0.0)
                 selectTab(tabForUrl(url))
             }
 
@@ -468,6 +494,32 @@ class MainActivity : AppCompatActivity() {
     }
   }
   setInterval(zeroTop, 500);
+})();
+
+// ---------- cut the empty strip above the video player ----------
+(function () {
+  if (window.__yvCrop) return;
+  window.__yvCrop = true;
+  var last = -1;
+
+  function report(v) {
+    if (v === last) return;
+    last = v;
+    try { YV.crop(v); } catch (e) {}
+  }
+
+  function measure() {
+    if (location.pathname.indexOf('/watch') !== 0) { report(0); return; }
+    var box = document.querySelector('.html5-video-player') || document.querySelector('video');
+    if (!box) return;
+    if (window.scrollY > 1) return;          // only trust it while at the top
+    var r = box.getBoundingClientRect();
+    if (r.height < 50) return;
+    var g = Math.round(r.top);
+    if (g < 0 || g > 150) return;
+    report(g <= 2 ? 0 : g);
+  }
+  setInterval(measure, 400);
 })();
 
 // ---------- ads ----------
