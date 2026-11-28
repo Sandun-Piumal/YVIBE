@@ -496,6 +496,14 @@ class MainActivity : AppCompatActivity() {
                 border-radius: 16px !important;
                 overflow: hidden !important;
             }
+
+            /* chips, pinned bar, thumbnails (classes are set by the script below) */
+            .yv-pin { top: 0 !important; transform: none !important; background: #F4F0FF !important; z-index: 5 !important; }
+            .yv-chip { background: rgba(255,255,255,0.88) !important; border: 1px solid #FFFFFF !important; border-radius: 16px !important; box-shadow: 0 6px 16px rgba(124,58,237,0.14) !important; }
+            .yv-chip, .yv-chip * { color: #1E1B3A !important; }
+            .yv-chip-on { background: linear-gradient(135deg, #5B21B6, #7C3AED) !important; box-shadow: 0 8px 20px rgba(124,58,237,0.45) !important; }
+            .yv-chip-on, .yv-chip-on * { color: #FFFFFF !important; }
+            .yv-thumb { margin-left: 12px !important; margin-right: 12px !important; width: auto !important; border-radius: 16px !important; overflow: hidden !important; }
         """
 
         // PASTE YOUR EXISTING SCRIPT BETWEEN THE QUOTES BELOW
@@ -687,6 +695,87 @@ class MainActivity : AppCompatActivity() {
     }
   }
   setInterval(sweep, 300);
+})();
+
+// ---------- purple skin: chips, pinned chip bar, thumbnails ----------
+(function () {
+  if (window.__yvSkin) return;
+  window.__yvSkin = true;
+
+  function isDark(rgb) {
+    var m = (rgb || '').match(/[\d.]+/g);
+    if (!m || m.length < 3) return false;
+    var a = m.length > 3 ? parseFloat(m[3]) : 1;
+    if (a < 0.3) return false;
+    return (+m[0] + +m[1] + +m[2]) < 330;
+  }
+
+  function findAllChip() {
+    var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    var n;
+    while ((n = w.nextNode())) {
+      if (n.nodeValue.trim() !== 'All') continue;
+      var e = n.parentElement;
+      for (var i = 0; i < 6 && e; i++) {
+        var r = e.getBoundingClientRect();
+        var cs = getComputedStyle(e);
+        if (r.top < 420 && r.height >= 26 && r.height <= 60 &&
+            parseFloat(cs.borderTopLeftRadius) >= 6) return e;
+        e = e.parentElement;
+      }
+    }
+    return null;
+  }
+
+  function skin() {
+    var p = location.pathname;
+    if (p.indexOf('/watch') === 0 || p.indexOf('/shorts') === 0) return;
+    if (!document.body) return;
+
+    // chips
+    var first = findAllChip();
+    if (first) {
+      var cls = first.classList.length ? first.classList[0] : '';
+      var sel = first.tagName + (cls ? '.' + CSS.escape(cls) : '');
+      var top = first.getBoundingClientRect().top;
+      var list = document.querySelectorAll(sel);
+      for (var i = 0; i < list.length; i++) {
+        var el = list[i];
+        var r = el.getBoundingClientRect();
+        if (Math.abs(r.top - top) > 6 || r.height < 20) continue;
+        el.classList.remove('yv-chip', 'yv-chip-on');     // read the site's own colour first
+        var dark = isDark(getComputedStyle(el).backgroundColor);
+        el.classList.add('yv-chip');
+        if (dark) el.classList.add('yv-chip-on');
+      }
+      // keep the chip bar pinned at the very top while scrolling
+      var a = first.parentElement;
+      for (var j = 0; j < 10 && a && a !== document.body; j++) {
+        var pos = getComputedStyle(a).position;
+        if (pos === 'sticky' || pos === 'fixed') { a.classList.add('yv-pin'); break; }
+        a = a.parentElement;
+      }
+    }
+
+    // big video thumbnails: side margins + rounded corners
+    var imgs = document.querySelectorAll('img');
+    for (var k = 0; k < imgs.length; k++) {
+      var img = imgs[k];
+      var ir = img.getBoundingClientRect();
+      if (ir.width < 250 || ir.height < 120) continue;
+      var best = img, cur = img;
+      for (var d = 0; d < 4; d++) {
+        var par = cur.parentElement;
+        if (!par || par === document.body) break;
+        var pr = par.getBoundingClientRect();
+        if (Math.abs(pr.width - ir.width) <= 4 && pr.height >= ir.height - 4 && pr.height <= ir.height + 8) {
+          best = par; cur = par;
+        } else break;
+      }
+      if (best !== document.body && !best.classList.contains('yv-thumb')) best.classList.add('yv-thumb');
+    }
+  }
+  setInterval(skin, 600);
 })();
 
 // ---------- ads ----------
