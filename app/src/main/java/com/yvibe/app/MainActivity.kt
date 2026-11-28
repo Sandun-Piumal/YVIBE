@@ -156,11 +156,16 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 progress.visibility = View.GONE
-                injectUi(view)
+                if (url.startsWith("http") && url != START_URL) injectUi(view)   // not on our own welcome page
             }
 
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val u = request.url.toString()
+                if (u == START_URL) {
+                    return WebResourceResponse(
+                        "text/html", "utf-8", ByteArrayInputStream(WELCOME_HTML.toByteArray(Charsets.UTF_8))
+                    )
+                }
                 if (BLOCKED.any { u.contains(it) }) {
                     return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
                 }
@@ -169,7 +174,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val host = request.url.host ?: return false
-                val internal = host.endsWith("youtube.com") || host.endsWith("google.com") ||
+                val internal = host == "yvibe.local" || host.endsWith("youtube.com") || host.endsWith("google.com") ||
                     host.endsWith("gstatic.com") || host.endsWith("googlevideo.com")
                 if (internal) return false
                 startActivity(Intent(Intent.ACTION_VIEW, request.url))
@@ -231,10 +236,91 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        const val WELCOME_HTML = """
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>YVIBE</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:system-ui,-apple-system,"Noto Sans Sinhala","Noto Sans",Roboto,sans-serif;
+    color:#1b1a33;
+    background:linear-gradient(180deg,#edebff 0%,#dcebff 50%,#fbe3f3 100%);
+    min-height:100vh;overflow-x:hidden;position:relative;
+  }
+  .orb{position:fixed;border-radius:50%;filter:blur(60px);opacity:.45;z-index:0;animation:float 9s ease-in-out infinite}
+  .o1{width:240px;height:240px;background:#7c5cff;left:-80px;top:-40px}
+  .o2{width:220px;height:220px;background:#18c6ff;right:-90px;top:42%;animation-delay:-3s}
+  .o3{width:240px;height:240px;background:#ff5fb7;left:-40px;bottom:-60px;animation-delay:-6s}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+  main{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;
+       padding:44px 22px 32px;text-align:center;min-height:100vh}
+  .logo{width:96px;height:96px;border-radius:30px;display:flex;align-items:center;justify-content:center;
+        background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(255,255,255,.45));
+        border:1.5px solid #fff;box-shadow:0 18px 40px rgba(90,80,160,.28)}
+  h1{margin:22px 0 6px;font-size:30px;line-height:1.15;letter-spacing:-.6px;font-weight:800}
+  h1 span{background:linear-gradient(90deg,#6a4dff,#18a6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{margin:0;font-size:15px;color:#58567a;line-height:1.5}
+  .si{margin:8px 0 0;font-size:16px;font-weight:600;color:#3a3860;line-height:1.6}
+  .label{margin:30px 0 12px;font-size:13px;font-weight:700;color:#58567a;letter-spacing:.4px;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:360px}
+  a.card{display:flex;align-items:center;gap:10px;padding:14px;border-radius:22px;text-decoration:none;color:#1b1a33;
+         background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.95);
+         box-shadow:0 10px 26px rgba(90,80,160,.16);font-weight:700;font-size:14px}
+  a.card:active{transform:scale(.97)}
+  .dot{width:34px;height:34px;border-radius:12px;flex:none}
+  .d1{background:linear-gradient(135deg,#ff5fb7,#ffb36e)}
+  .d2{background:linear-gradient(135deg,#7c5cff,#18c6ff)}
+  .d3{background:linear-gradient(135deg,#34e0a1,#18a6ff)}
+  .d4{background:linear-gradient(135deg,#ffd36e,#ff7a7a)}
+  .d5{background:linear-gradient(135deg,#18a6ff,#6a4dff)}
+  .d6{background:linear-gradient(135deg,#ff7ac8,#7c5cff)}
+  a.home{margin-top:22px;display:flex;align-items:center;justify-content:center;width:100%;max-width:360px;height:54px;
+         border-radius:27px;background:#1b1a33;color:#fff;text-decoration:none;font-weight:700;font-size:15px;
+         box-shadow:0 14px 30px rgba(27,26,51,.3)}
+  .foot{margin-top:auto;padding-top:28px;font-size:12px;color:#7a789a}
+</style>
+</head>
+<body>
+<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+<main>
+  <div class="logo">
+    <svg width="58" height="58" viewBox="0 0 72 72" fill="none" aria-hidden="true">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a4dff"/><stop offset="1" stop-color="#18a6ff"/></linearGradient></defs>
+      <circle cx="36" cy="36" r="27" stroke="url(#g)" stroke-width="4"/>
+      <path d="M30 24.500v23l19-11.500z" fill="url(#g)" stroke="url(#g)" stroke-width="3" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <h1>Welcome to <span>YVIBE</span></h1>
+  <p class="sub">Watch without the noise</p>
+  <p class="si">ඔබ කැමති දේ, බාධාවකින් තොරව බලන්න</p>
+
+  <div class="label">Start watching</div>
+  <div class="grid">
+    <a class="card" href="https://m.youtube.com/results?search_query=trending+videos"><span class="dot d1"></span>Trending</a>
+    <a class="card" href="https://m.youtube.com/results?search_query=sinhala+songs"><span class="dot d2"></span>Sinhala songs</a>
+    <a class="card" href="https://m.youtube.com/results?search_query=gaming"><span class="dot d3"></span>Gaming</a>
+    <a class="card" href="https://m.youtube.com/results?search_query=learn+something+new"><span class="dot d4"></span>Learning</a>
+    <a class="card" href="https://m.youtube.com/results?search_query=news+today"><span class="dot d5"></span>News</a>
+    <a class="card" href="https://m.youtube.com/results?search_query=live"><span class="dot d6"></span>Live</a>
+  </div>
+
+  <a class="home" href="https://m.youtube.com/">Open my home feed</a>
+  <div class="foot">Use the search bar above to find anything</div>
+</main>
+</body>
+</html>
+"""
+
         const val BASE = "https://m.youtube.com"
 
         // First page shown when the app opens (and for the Home tab).
-        const val START_URL = BASE
+        const val START_URL = "https://yvibe.local/welcome"   // served from WELCOME_HTML below, no extra file
 
         // Requests containing any of these are dropped (ad servers / ad tracking)
         val BLOCKED = listOf(
