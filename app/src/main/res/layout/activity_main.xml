@@ -1,106 +1,288 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@drawable/bg_gradient">
+    android:background="@color/lavender">
 
-    <!-- Top glass bar: logo + search -->
     <LinearLayout
-        android:id="@+id/topBar"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_margin="12dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="12dp"
-        android:paddingEnd="6dp"
-        android:background="@drawable/bg_glass">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <ImageView
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_logo"
-            android:contentDescription="@string/app_name" />
+        <!-- Purple header -->
+        <FrameLayout
+            android:id="@+id/header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="30dp"
+            android:paddingBottom="34dp"
+            android:background="@drawable/bg_header">
 
-        <EditText
-            android:id="@+id/searchInput"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
+            <LinearLayout
+                android:id="@+id/normalRow"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageButton
+                    android:id="@+id/menuBtn"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:background="@drawable/bg_btn_square"
+                    android:src="@drawable/ic_menu"
+                    android:tint="@color/white"
+                    android:contentDescription="Menu" />
+
+                <ImageView
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="fitStart"
+                    android:src="@drawable/yvibe_logo"
+                    android:contentDescription="@string/app_name" />
+
+                <ImageButton
+                    android:id="@+id/searchBtn"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_btn_white"
+                    android:src="@drawable/ic_search"
+                    android:tint="@color/purple_dark"
+                    android:contentDescription="Search" />
+
+                <FrameLayout
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="12dp">
+                    <ImageButton
+                        android:id="@+id/bellBtn"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/bg_btn_dark"
+                        android:src="@drawable/ic_bell"
+                        android:tint="@color/white"
+                        android:contentDescription="Notifications" />
+                    <View
+                        android:id="@+id/bellDot"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:layout_gravity="top|end"
+                        android:background="@drawable/bg_dot" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/searchRow"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:visibility="gone">
+
+                <ImageButton
+                    android:id="@+id/searchBack"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_btn_square"
+                    android:src="@drawable/ic_back"
+                    android:tint="@color/white"
+                    android:contentDescription="Back" />
+
+                <EditText
+                    android:id="@+id/searchInput"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="12dp"
+                    android:background="@drawable/bg_search_pill"
+                    android:hint="@string/search_hint"
+                    android:textColor="@color/ink"
+                    android:textColorHint="@color/ink_sub"
+                    android:textSize="15sp"
+                    android:singleLine="true"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text" />
+
+                <ImageButton
+                    android:id="@+id/searchGo"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_btn_white"
+                    android:src="@drawable/ic_search"
+                    android:tint="@color/purple_dark"
+                    android:contentDescription="Search" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- Website, with rounded top corners overlapping the header -->
+        <FrameLayout
+            android:id="@+id/webContainer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginStart="10dp"
-            android:background="@null"
-            android:hint="@string/search_hint"
-            android:textColor="@color/ink"
-            android:textColorHint="@color/ink_sub"
-            android:textSize="15sp"
-            android:singleLine="true"
-            android:imeOptions="actionSearch"
-            android:inputType="text" />
+            android:layout_marginTop="-30dp"
+            android:background="@drawable/bg_web_top"
+            android:clipToOutline="true">
 
-        <ImageButton
-            android:id="@+id/searchBtn"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@null"
-            android:src="@drawable/ic_search"
-            android:contentDescription="Search" />
+            <WebView
+                android:id="@+id/webView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <ProgressBar
+                android:id="@+id/progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:progressTint="@color/purple"
+                android:max="100"
+                android:visibility="gone" />
+        </FrameLayout>
     </LinearLayout>
 
-    <!-- Rounded container for the website -->
-    <FrameLayout
-        android:id="@+id/webContainer"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
-        android:background="@drawable/bg_web_container"
-        android:clipToOutline="true">
-
-        <WebView
-            android:id="@+id/webView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-        <ProgressBar
-            android:id="@+id/progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="3dp"
-            android:progressTint="@color/accent"
-            android:max="100"
-            android:visibility="gone" />
-    </FrameLayout>
-
-    <!-- Bottom glass nav -->
+    <!-- Floating bottom navigation -->
     <LinearLayout
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:layout_margin="12dp"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="14dp"
+        android:layout_marginBottom="14dp"
         android:orientation="horizontal"
-        android:gravity="center"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:background="@drawable/bg_glass">
-
-        <LinearLayout android:id="@+id/navHome" style="@style/NavItem">
-            <ImageView android:id="@+id/navHomeIcon" style="@style/NavIcon" android:src="@drawable/ic_home" />
-            <TextView android:id="@+id/navHomeLabel" style="@style/NavLabel" android:text="Home" />
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:elevation="10dp"
+        android:background="@drawable/bg_nav">
+        <LinearLayout
+            android:id="@+id/navHome"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/navHomeIcon"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_home_f" />
+            <TextView
+                android:id="@+id/navHomeLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Home"
+                android:textSize="11sp"
+                android:textColor="@color/ink_sub" />
+            <View
+                android:id="@+id/navHomeBar"
+                android:layout_width="26dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_bar"
+                android:visibility="invisible" />
         </LinearLayout>
-        <LinearLayout android:id="@+id/navShorts" style="@style/NavItem">
-            <ImageView android:id="@+id/navShortsIcon" style="@style/NavIcon" android:src="@drawable/ic_shorts" />
-            <TextView android:id="@+id/navShortsLabel" style="@style/NavLabel" android:text="Shorts" />
+        <LinearLayout
+            android:id="@+id/navShorts"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/navShortsIcon"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_shorts" />
+            <TextView
+                android:id="@+id/navShortsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Shorts"
+                android:textSize="11sp"
+                android:textColor="@color/ink_sub" />
+            <View
+                android:id="@+id/navShortsBar"
+                android:layout_width="26dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_bar"
+                android:visibility="invisible" />
         </LinearLayout>
-        <LinearLayout android:id="@+id/navSubs" style="@style/NavItem">
-            <ImageView android:id="@+id/navSubsIcon" style="@style/NavIcon" android:src="@drawable/ic_subs" />
-            <TextView android:id="@+id/navSubsLabel" style="@style/NavLabel" android:text="Subs" />
+        <LinearLayout
+            android:id="@+id/navSubs"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/navSubsIcon"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_subs" />
+            <TextView
+                android:id="@+id/navSubsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Subscriptions"
+                android:textSize="11sp"
+                android:textColor="@color/ink_sub" />
+            <View
+                android:id="@+id/navSubsBar"
+                android:layout_width="26dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_bar"
+                android:visibility="invisible" />
         </LinearLayout>
-        <LinearLayout android:id="@+id/navLib" style="@style/NavItem">
-            <ImageView android:id="@+id/navLibIcon" style="@style/NavIcon" android:src="@drawable/ic_library" />
-            <TextView android:id="@+id/navLibLabel" style="@style/NavLabel" android:text="Library" />
+        <LinearLayout
+            android:id="@+id/navYou"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/navYouIcon"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:src="@drawable/ic_you" />
+            <TextView
+                android:id="@+id/navYouLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="You"
+                android:textSize="11sp"
+                android:textColor="@color/ink_sub" />
+            <View
+                android:id="@+id/navYouBar"
+                android:layout_width="26dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_bar"
+                android:visibility="invisible" />
         </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+</FrameLayout>
